@@ -1,7 +1,9 @@
 ninja-LightSymphony
 ===================
 Date: October 2013
-Author: Ian Lumb
+
+Much of this is recycling the excellent LimitlessRGB code here: https://github.com/theojulienne/ninja-limitlessLED
+
 
 
 This is a test package to try to actuate LightSymphony controls from a ninjablock.
