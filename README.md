@@ -24,13 +24,21 @@ Pg 19 Section 5
 
 Interfacing – Advanced Setup 
 Message Action 
+
 all_on // Switch ON all areas 
+
 all_off //Switch OFF all areas 
+
 area_on x // Switch ON area ‘x’, where x = “0” to “9” 
+
 area_off x // Switch OFF area ‘x’, where x = “0” to “9” 
+
 start-show // Start light-show running 
+
 stop_show // STOP light show 
+
 inten_x // Set intensity of last selected area to ‘x’ 
+
 where x = “0” to “9” 
 
 ***************************************************************************************************
