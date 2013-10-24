@@ -1,81 +1,117 @@
-var Device = require('./lib/device')
+var LightSymphony = require('./lib/LightSymphony')
   , util = require('util')
   , stream = require('stream')
-  , configHandlers = require('./lib/config-handlers');
+  , configHandlers = require('./lib/config')
 
-// Give our driver a stream interface
-util.inherits(myDriver,stream);
-
-// Our greeting to the user.
-var HELLO_WORLD_ANNOUNCEMENT = {
-  "contents": [
-    { "type": "heading",      "text": "Hello World Driver Loaded" },
-    { "type": "paragraph",    "text": "The hello world driver has been loaded. You should not see this message again." }
-  ]
-};
+// Give our module a stream interface
+util.inherits(LightSymphonyDriver,stream);
 
 /**
  * Called when our client starts up
  * @constructor
  *
- * @param  {Object} opts Saved/default driver configuration
+ * @param  {Object} opts Saved/default module configuration
  * @param  {Object} app  The app event emitter
  * @param  {String} app.id The client serial number
  *
  * @property  {Function} save When called will save the contents of `opts`
- * @property  {Function} config Will be called when config data is received from the Ninja Platform
+ * @property  {Function} config Will be called when config data is received from the cloud
  *
  * @fires register - Emit this when you wish to register a device (see Device)
- * @fires config - Emit this when you wish to send config data back to the Ninja Platform
+ * @fires config - Emit this when you wish to send config data back to the cloud
  */
-function myDriver(opts,app) {
+function LightSymphonyDriver(opts,app) {
 
   var self = this;
 
+  this._log = app.log;
+  this._opts = opts;
+
+  if ( !this._opts.lightGroups ) {
+    this._opts.lightGroups = [];
+  }
+
+  this.registeredDevices = {};
+
+  console.log( 'Light Groups: ', this._opts.lightGroups );
+
   app.on('client::up',function(){
-
-    // The client is now connected to the Ninja Platform
-
-    // Check if we have sent an announcement before.
-    // If not, send one and save the fact that we have.
-    if (!opts.hasSentAnnouncement) {
-      self.emit('announcement',HELLO_WORLD_ANNOUNCEMENT);
-      opts.hasSentAnnouncement = true;
-      self.save();
-    }
-
-    // Register a device
-    self.emit('register', new Device());
-  });
+      // Register a device
+      if (opts.ipAddress) {
+                this.registerAll( );
+      }
+  }.bind(this));
 };
 
 /**
- * Called when a user prompts a configuration.
- * If `rpc` is null, the user is asking for a menu of actions
- * This menu should have rpc_methods attached to them
- *
- * @param  {Object}   rpc     RPC Object
- * @param  {String}   rpc.method The method from the last payload
- * @param  {Object}   rpc.params Any input data the user provided
- * @param  {Function} cb      Used to match up requests.
+ * Called when config data is received from the cloud
+ * @param  {Object} config Configuration data
  */
-myDriver.prototype.config = function(rpc,cb) {
-
+LightSymphonyDriver.prototype.config = function(rpc, cb) {
   var self = this;
-  // If rpc is null, we should send the user a menu of what he/she
-  // can do.
-  // Otherwise, we will try action the rpc method
+
   if (!rpc) {
-    return configHandlers.menu.call(this,cb);
+    return configHandlers.probe.call(this,cb);
   }
-  else if (typeof configHandlers[rpc.method] === "function") {
-    return configHandlers[rpc.method].call(this,rpc.params,cb);
-  }
-  else {
-    return cb(true);
+
+  switch (rpc.method) {
+    /* configuring the hub */
+    case 'manual_config_hub':
+      return configHandlers.get_ip_port.call(this,rpc.params,cb);
+      break;
+    case 'manual_config_hub_store':
+      return configHandlers.manual_config_hub_store.call(this,rpc.params,cb);
+      break;
+    
+    /* adding light groups */
+    case 'manual_group_add':
+      return configHandlers.manual_group_add.call(this,rpc.params,cb);
+      break;
+    case 'manual_group_add_post':
+      return configHandlers.manual_group_add_post.call(this,rpc.params,cb);
+      break;
+    
+    /* */
+    default: return cb(true); break;
   }
 };
 
+LightSymphonyDriver.prototype.addLightGroup = function(groupNumber, groupColorType) {
+  var newGroup = {
+    'number': groupNumber,
+    'colorType': groupColorType
+  };
+  this._opts.lightGroups.push( newGroup );
+  this.save();
+  this.registerGroup( newGroup );
+};
+
+LightSymphonyDriver.prototype.setIpPort = function(ipAddress, port) {
+  this._opts.ipAddress = ipAddress;
+  this._opts.port = port;
+  this.save();
+  this.registerAll();
+};
+
+LightSymphonyDriver.prototype.registerGroup = function(group) {
+  var device;
+  var key = group.number; /*+ group.colorType;*/
+  
+  if ( key in this.registeredDevices ) {
+        device = this.registeredDevices[key];
+  } else {
+    device = new LightSymphony(this, group);
+  }
+
+  this.emit('register', device);
+};
+
+LightSymphonyDriver.prototype.registerAll = function() {
+  var lightGroups = this._opts.lightGroups;
+  for ( var i = 0; i < lightGroups.length; i++ ) {
+    this.registerGroup( lightGroups[i] );
+  }
+};
 
 // Export it
-module.exports = myDriver;
+module.exports = LightSymphonyDriver;
