@@ -98,6 +98,29 @@ LightSymphony.prototype.write = function(data) {
   var functionToCall;
   var turnOnFirst = false;
 
+  /* just try to send a Zone actuation */
+  /* ZONES
+     Steps 1
+     BBQ 2
+     PoolArea 3
+     PoolWater 4
+     BackGarden 5
+     BackWall 6
+     Front Carriage 7
+     BrickLights 8
+     TreeSpots 9
+     GateSigns 10
+     DriveWay 11
+     House Spots 12
+     RearPatioZone 13
+     FrontHouseZone 14
+  */
+     
+  const TestCmd = 'area_on 3 /';
+  /* >>>move into if below */
+  sendUDPascii(TestCmd, this.ipAddress,this.port, funtionToCall);
+
+  /*
   if (data == BLACK) {
     functionToCall = function () {
       setRGBLED(0, this.ipAddress, this.port);
@@ -118,6 +141,8 @@ LightSymphony.prototype.write = function(data) {
     turnOnFirst = true;
     }
   }
+  */
+
   if (typeof functionToCall !== 'undefined') {
     if (turnOnFirst) {
       setRGBLED(1, this.ipAddress, this.port,  functionToCall);
@@ -125,9 +150,15 @@ LightSymphony.prototype.write = function(data) {
     else {
       functionToCall();
     }
+    /* send data */
     self.emit('data', data);
   }
 };
+
+function sendUDPascii(cmd, ipAddress, port, callback) {
+    var cmdString = cmd;
+    sendUDPCommand(cmdString, valByteNA, ipAddress, port, callback);
+}
 
 function setRGBLED(on, ipAddress, port, callback) {
   var cmdByte = (on ? cmdOnByte : cmdOffByte);
